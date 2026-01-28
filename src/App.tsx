@@ -15,6 +15,7 @@ import Internships from "./pages/Internships";
 import OpportunityDetails from "./pages/OpportunityDetails";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
+import Connections from "./pages/Connections";
 import CollegeDashboard from "./pages/CollegeDashboard";
 import CompanyDashboard from "./pages/CompanyDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/opportunities/:id" element={<OpportunityDetails />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/connections" element={<Connections />} />
             <Route path="/college/dashboard" element={<CollegeDashboard />} />
             <Route path="/company/dashboard" element={<CompanyDashboard />} />
             <Route path="/admin" element={<AdminDashboard />} />

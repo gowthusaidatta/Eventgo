@@ -4,8 +4,11 @@ import { HeroSection } from '@/components/home/HeroSection';
 import { FeaturedEvents } from '@/components/home/FeaturedEvents';
 import { FeaturedOpportunities } from '@/components/home/FeaturedOpportunities';
 import { CTASection } from '@/components/home/CTASection';
+import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
+  const { user } = useAuth();
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -13,7 +16,7 @@ const Index = () => {
         <HeroSection />
         <FeaturedEvents />
         <FeaturedOpportunities />
-        <CTASection />
+        {!user && <CTASection />}
       </main>
       <Footer />
     </div>

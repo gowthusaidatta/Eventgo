@@ -22,6 +22,7 @@ import { EditEventDialog } from '@/components/admin/EditEventDialog';
 import { EditOpportunityDialog } from '@/components/admin/EditOpportunityDialog';
 import { CreateUserDialog } from '@/components/admin/CreateUserDialog';
 import { InquiriesInbox } from '@/components/InquiriesInbox';
+import { UserDetailsDialog } from '@/components/admin/UserDetailsDialog';
 
 export default function AdminDashboard() {
   const { user, role, isLoading } = useAuth();
@@ -39,6 +40,10 @@ export default function AdminDashboard() {
   // Bulk selection state
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
   const [selectedOpportunities, setSelectedOpportunities] = useState<string[]>([]);
+  
+  // User details dialog state
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [userDetailsOpen, setUserDetailsOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoading && (!user || role !== 'admin')) {
@@ -54,11 +59,15 @@ export default function AdminDashboard() {
   }, [role]);
 
   const fetchAllData = async () => {
-    // Fetch users with roles
+    // Fetch users with roles and related college/company info
     const { data: profilesData } = await supabase
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false });
+    
+    // Fetch all colleges and companies for mapping
+    const { data: allColleges } = await supabase.from('colleges').select('*');
+    const { data: allCompanies } = await supabase.from('companies').select('*');
     
     if (profilesData) {
       const usersWithRoles = await Promise.all(
@@ -68,7 +77,17 @@ export default function AdminDashboard() {
             .select('role')
             .eq('user_id', profile.user_id)
             .maybeSingle();
-          return { ...profile, role: roleData?.role };
+          
+          // Find associated college or company
+          const userCollege = allColleges?.find(c => c.user_id === profile.user_id);
+          const userCompany = allCompanies?.find(c => c.user_id === profile.user_id);
+          
+          return { 
+            ...profile, 
+            role: roleData?.role,
+            college: userCollege,
+            company: userCompany
+          };
         })
       );
       setUsers(usersWithRoles);
@@ -160,6 +179,11 @@ export default function AdminDashboard() {
     
     toast({ title: 'Deleted', description: 'User deleted successfully' });
     fetchAllData();
+  };
+
+  const handleViewUser = (user: any) => {
+    setSelectedUser(user);
+    setUserDetailsOpen(true);
   };
 
   const handleDeleteEvent = async (eventId: string) => {
@@ -404,7 +428,16 @@ export default function AdminDashboard() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                onClick={() => handleViewUser(u)}
+                                title="View Details"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => handleToggleUserActive(u.user_id, u.is_active)}
+                                title={u.is_active ? 'Deactivate' : 'Activate'}
                               >
                                 {u.is_active ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
                               </Button>
@@ -695,6 +728,13 @@ export default function AdminDashboard() {
         </div>
       </main>
       <Footer />
+      
+      {/* User Details Dialog */}
+      <UserDetailsDialog 
+        user={selectedUser} 
+        open={userDetailsOpen} 
+        onOpenChange={setUserDetailsOpen} 
+      />
     </div>
   );
 }

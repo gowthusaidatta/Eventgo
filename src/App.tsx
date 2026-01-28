@@ -12,9 +12,12 @@ import EventDetails from "./pages/EventDetails";
 import Hackathons from "./pages/Hackathons";
 import Jobs from "./pages/Jobs";
 import Internships from "./pages/Internships";
+import OpportunityDetails from "./pages/OpportunityDetails";
 import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
 import CollegeDashboard from "./pages/CollegeDashboard";
 import CompanyDashboard from "./pages/CompanyDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,10 +37,15 @@ const App = () => (
             <Route path="/events/:id" element={<EventDetails />} />
             <Route path="/hackathons" element={<Hackathons />} />
             <Route path="/jobs" element={<Jobs />} />
+            <Route path="/jobs/:id" element={<OpportunityDetails />} />
             <Route path="/internships" element={<Internships />} />
+            <Route path="/internships/:id" element={<OpportunityDetails />} />
+            <Route path="/opportunities/:id" element={<OpportunityDetails />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/college/dashboard" element={<CollegeDashboard />} />
             <Route path="/company/dashboard" element={<CompanyDashboard />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

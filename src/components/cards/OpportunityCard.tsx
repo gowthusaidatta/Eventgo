@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Briefcase, Clock, ExternalLink, IndianRupee } from 'lucide-react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,8 @@ interface OpportunityCardProps {
 }
 
 export function OpportunityCard({ opportunity }: OpportunityCardProps) {
+  const navigate = useNavigate();
+
   const typeColors: Record<string, string> = {
     job: 'bg-accent text-accent-foreground',
     internship: 'bg-secondary text-secondary-foreground',
@@ -26,8 +28,28 @@ export function OpportunityCard({ opportunity }: OpportunityCardProps) {
     return min || max;
   };
 
+  const handleClick = () => {
+    if (opportunity.is_external && opportunity.external_url) {
+      window.open(opportunity.external_url, '_blank');
+    } else {
+      navigate(`/opportunities/${opportunity.id}`);
+    }
+  };
+
+  const handleApply = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (opportunity.is_external && opportunity.external_url) {
+      window.open(opportunity.external_url, '_blank');
+    } else {
+      navigate(`/opportunities/${opportunity.id}`);
+    }
+  };
+
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-border/50">
+    <Card 
+      className="overflow-hidden hover:shadow-lg transition-all duration-300 border-border/50 cursor-pointer"
+      onClick={handleClick}
+    >
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="flex-1">
@@ -42,7 +64,7 @@ export function OpportunityCard({ opportunity }: OpportunityCardProps) {
                 <Badge className="bg-gold text-foreground">Featured</Badge>
               )}
             </div>
-            <h3 className="font-semibold text-lg mb-1 line-clamp-1">
+            <h3 className="font-semibold text-lg mb-1 line-clamp-1 hover:text-secondary transition-colors">
               {opportunity.title}
             </h3>
             <p className="text-sm text-muted-foreground">
@@ -108,13 +130,13 @@ export function OpportunityCard({ opportunity }: OpportunityCardProps) {
             <span>Posted {formatDistanceToNow(new Date(opportunity.created_at))} ago</span>
           )}
         </div>
-        <Button size="sm" className="bg-secondary hover:bg-secondary/90">
+        <Button size="sm" className="bg-secondary hover:bg-secondary/90" onClick={handleApply}>
           {opportunity.is_external ? (
             <>
               Apply <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
             </>
           ) : (
-            'Apply Now'
+            'View Details'
           )}
         </Button>
       </CardFooter>

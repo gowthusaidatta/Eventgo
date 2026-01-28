@@ -15,6 +15,70 @@ import { supabase } from '@/integrations/supabase/client';
 import { Event } from '@/lib/types';
 import { format } from 'date-fns';
 
+// Sample events for fallback
+const sampleEvents: Event[] = [
+  {
+    id: '1',
+    college_id: '1',
+    title: 'TechFest 2026 - Annual Technical Festival',
+    short_description: 'Join the biggest tech fest with coding competitions, robotics, and more!',
+    description: 'Annual technical festival featuring coding competitions, robotics, workshops, and guest lectures from industry experts. Join thousands of students from across the country for three days of innovation, learning, and fun!',
+    banner_url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&auto=format&fit=crop&q=60',
+    venue: 'Main Campus Auditorium',
+    city: 'Mumbai',
+    start_date: '2026-02-15T09:00:00Z',
+    end_date: '2026-02-17T18:00:00Z',
+    is_free: false,
+    base_price: 299,
+    status: 'published',
+    tags: ['Tech', 'Coding', 'Robotics'],
+    is_featured: true,
+    view_count: 1250,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: '2',
+    college_id: '2',
+    title: 'Innovate 2026 - Startup Summit',
+    short_description: 'Connect with investors, pitch your ideas, and learn from successful founders.',
+    description: 'A two-day summit bringing together aspiring entrepreneurs, successful founders, and investors. Network, learn, and pitch your startup idea to leading VCs!',
+    banner_url: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=800&auto=format&fit=crop&q=60',
+    venue: 'Convention Center',
+    city: 'Bangalore',
+    start_date: '2026-03-01T10:00:00Z',
+    end_date: '2026-03-02T17:00:00Z',
+    is_free: true,
+    base_price: 0,
+    status: 'published',
+    tags: ['Startup', 'Innovation', 'Networking'],
+    is_featured: true,
+    view_count: 890,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: '3',
+    college_id: '3',
+    title: 'Cultural Night - Euphoria 2026',
+    short_description: 'Experience music, dance, drama, and art at the biggest cultural extravaganza.',
+    description: 'Annual cultural festival featuring performances, competitions, and celebrity appearances. Three nights of music, dance, drama, and art!',
+    banner_url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&auto=format&fit=crop&q=60',
+    venue: 'Open Air Theatre',
+    city: 'Delhi',
+    start_date: '2026-02-20T17:00:00Z',
+    end_date: '2026-02-22T23:00:00Z',
+    is_free: false,
+    base_price: 199,
+    status: 'published',
+    tags: ['Cultural', 'Music', 'Dance'],
+    is_featured: true,
+    view_count: 2100,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
+
 export default function EventDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -27,31 +91,41 @@ export default function EventDetails() {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [registrationComplete, setRegistrationComplete] = useState(false);
+  const [isSampleEvent, setIsSampleEvent] = useState(false);
 
   useEffect(() => {
     fetchEventDetails();
   }, [id]);
 
   useEffect(() => {
-    if (user && event) {
+    if (user && event && !isSampleEvent) {
       checkRegistration();
     }
-  }, [user, event]);
+  }, [user, event, isSampleEvent]);
 
   const fetchEventDetails = async () => {
+    // First try to fetch from database
     const { data, error } = await supabase
       .from('events')
       .select('*, college:colleges(*)')
       .eq('id', id)
       .maybeSingle();
 
-    if (error || !data) {
-      toast({ title: 'Error', description: 'Event not found', variant: 'destructive' });
-      navigate('/events');
-      return;
+    if (!error && data) {
+      setEvent(data as unknown as Event);
+      setIsSampleEvent(false);
+    } else {
+      // Fallback to sample events
+      const sampleEvent = sampleEvents.find(e => e.id === id);
+      if (sampleEvent) {
+        setEvent(sampleEvent);
+        setIsSampleEvent(true);
+      } else {
+        toast({ title: 'Error', description: 'Event not found', variant: 'destructive' });
+        navigate('/events');
+        return;
+      }
     }
-
-    setEvent(data as unknown as Event);
     setIsLoading(false);
   };
 
@@ -73,6 +147,16 @@ export default function EventDetails() {
       return;
     }
 
+    if (isSampleEvent) {
+      toast({ 
+        title: 'Demo Event', 
+        description: 'This is a sample event. Registration is simulated!',
+      });
+      setRegistrationComplete(true);
+      setIsRegistered(true);
+      return;
+    }
+
     if (!event?.is_free) {
       setShowPaymentDialog(true);
       return;
@@ -82,6 +166,13 @@ export default function EventDetails() {
   };
 
   const processRegistration = async () => {
+    if (isSampleEvent) {
+      setRegistrationComplete(true);
+      setIsRegistered(true);
+      toast({ title: 'Success!', description: 'Demo registration complete!' });
+      return;
+    }
+
     setIsProcessing(true);
 
     // Create registration

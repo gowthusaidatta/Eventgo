@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Calendar, Briefcase, Building2, Shield, Search, Ban, CheckCircle, Trash2, Eye, Power, PowerOff } from 'lucide-react';
+import { Users, Calendar, Briefcase, Building2, Shield, Search, Ban, CheckCircle, Trash2, Eye, Power, PowerOff, MessageSquare } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +20,8 @@ import { CreateEventDialog } from '@/components/admin/CreateEventDialog';
 import { CreateOpportunityDialog } from '@/components/admin/CreateOpportunityDialog';
 import { EditEventDialog } from '@/components/admin/EditEventDialog';
 import { EditOpportunityDialog } from '@/components/admin/EditOpportunityDialog';
+import { CreateUserDialog } from '@/components/admin/CreateUserDialog';
+import { InquiriesInbox } from '@/components/InquiriesInbox';
 
 export default function AdminDashboard() {
   const { user, role, isLoading } = useAuth();
@@ -138,6 +141,25 @@ export default function AdminDashboard() {
       toast({ title: 'Updated', description: `User ${!isActive ? 'activated' : 'deactivated'}` });
       fetchAllData();
     }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    // Delete profile (cascade will handle related data)
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('user_id', userId);
+    
+    if (profileError) {
+      toast({ title: 'Error', description: profileError.message, variant: 'destructive' });
+      return;
+    }
+
+    // Delete user role
+    await supabase.from('user_roles').delete().eq('user_id', userId);
+    
+    toast({ title: 'Deleted', description: 'User deleted successfully' });
+    fetchAllData();
   };
 
   const handleDeleteEvent = async (eventId: string) => {
@@ -327,10 +349,16 @@ export default function AdminDashboard() {
                   <TabsTrigger value="opportunities">Opportunities ({opportunities.length})</TabsTrigger>
                   <TabsTrigger value="colleges">Colleges ({colleges.length})</TabsTrigger>
                   <TabsTrigger value="companies">Companies ({companies.length})</TabsTrigger>
+                  <TabsTrigger value="inquiries" className="gap-1">
+                    <MessageSquare className="h-4 w-4" /> Inquiries
+                  </TabsTrigger>
                 </TabsList>
 
                 {/* Users Tab */}
                 <TabsContent value="users">
+                  <div className="flex justify-end mb-4">
+                    <CreateUserDialog onSuccess={fetchAllData} />
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -372,13 +400,43 @@ export default function AdminDashboard() {
                             {formatDistanceToNow(new Date(u.created_at))} ago
                           </TableCell>
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleToggleUserActive(u.user_id, u.is_active)}
-                            >
-                              {u.is_active ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleToggleUserActive(u.user_id, u.is_active)}
+                              >
+                                {u.is_active ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete User</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete {u.full_name}? This will remove their profile and all associated data.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => handleDeleteUser(u.user_id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -625,6 +683,11 @@ export default function AdminDashboard() {
                       ))}
                     </TableBody>
                   </Table>
+                </TabsContent>
+
+                {/* Inquiries Tab */}
+                <TabsContent value="inquiries">
+                  <InquiriesInbox type="admin" />
                 </TabsContent>
               </Tabs>
             </CardContent>

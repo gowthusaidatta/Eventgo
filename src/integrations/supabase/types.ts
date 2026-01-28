@@ -259,6 +259,66 @@ export type Database = {
           },
         ]
       }
+      inquiries: {
+        Row: {
+          created_at: string | null
+          event_id: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          opportunity_id: string | null
+          replied_at: string | null
+          sender_email: string
+          sender_id: string
+          sender_name: string
+          subject: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_id?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          opportunity_id?: string | null
+          replied_at?: string | null
+          sender_email: string
+          sender_id: string
+          sender_name: string
+          subject: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          opportunity_id?: string | null
+          replied_at?: string | null
+          sender_email?: string
+          sender_id?: string
+          sender_name?: string
+          subject?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inquiries_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inquiries_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       opportunities: {
         Row: {
           application_url: string | null

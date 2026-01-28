@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Briefcase, Users, Eye, Trash2, Edit } from 'lucide-react';
+import { Plus, Briefcase, Users, Eye, Trash2, Edit, MessageSquare } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Opportunity, OpportunityType } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
+import { InquiriesInbox } from '@/components/InquiriesInbox';
 
 export default function CompanyDashboard() {
   const { user, profile, role, isLoading } = useAuth();
@@ -359,62 +360,24 @@ export default function CompanyDashboard() {
                   <TabsTrigger value="all">All</TabsTrigger>
                   <TabsTrigger value="job">Jobs</TabsTrigger>
                   <TabsTrigger value="internship">Internships</TabsTrigger>
+                  <TabsTrigger value="inquiries" className="gap-1">
+                    <MessageSquare className="h-4 w-4" /> Inquiries
+                  </TabsTrigger>
                 </TabsList>
-              </Tabs>
 
-              {filteredOpps.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Briefcase className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No opportunities yet. Post your first listing!</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredOpps.map((opp) => (
-                    <div
-                      key={opp.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold">{opp.title}</h3>
-                          <Badge className={typeColors[opp.type]}>
-                            {opp.type.charAt(0).toUpperCase() + opp.type.slice(1)}
-                          </Badge>
-                          {!opp.is_active && (
-                            <Badge variant="secondary">Inactive</Badge>
-                          )}
-                          {opp.is_remote && (
-                            <Badge variant="outline">Remote</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {opp.location || 'Location TBD'} • Posted {formatDistanceToNow(new Date(opp.created_at))} ago
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleToggleActive(opp.id, opp.is_active)}
-                        >
-                          {opp.is_active ? 'Deactivate' : 'Activate'}
-                        </Button>
-                        <Button variant="ghost" size="icon">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteOpportunity(opp.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                <TabsContent value="all" className="mt-4">
+                  <OpportunityList opps={filteredOpps} />
+                </TabsContent>
+                <TabsContent value="job" className="mt-4">
+                  <OpportunityList opps={filteredOpps} />
+                </TabsContent>
+                <TabsContent value="internship" className="mt-4">
+                  <OpportunityList opps={filteredOpps} />
+                </TabsContent>
+                <TabsContent value="inquiries" className="mt-4">
+                  <InquiriesInbox type="company" />
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>
@@ -422,4 +385,64 @@ export default function CompanyDashboard() {
       <Footer />
     </div>
   );
+
+  function OpportunityList({ opps }: { opps: Opportunity[] }) {
+    if (opps.length === 0) {
+      return (
+        <div className="text-center py-12 text-muted-foreground">
+          <Briefcase className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>No opportunities yet. Post your first listing!</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {opps.map((opp) => (
+          <div
+            key={opp.id}
+            className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+          >
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-semibold">{opp.title}</h3>
+                <Badge className={typeColors[opp.type]}>
+                  {opp.type.charAt(0).toUpperCase() + opp.type.slice(1)}
+                </Badge>
+                {!opp.is_active && (
+                  <Badge variant="secondary">Inactive</Badge>
+                )}
+                {opp.is_remote && (
+                  <Badge variant="outline">Remote</Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {opp.location || 'Location TBD'} • Posted {formatDistanceToNow(new Date(opp.created_at))} ago
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleToggleActive(opp.id, opp.is_active)}
+              >
+                {opp.is_active ? 'Deactivate' : 'Activate'}
+              </Button>
+              <Button variant="ghost" size="icon">
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive hover:text-destructive"
+                onClick={() => handleDeleteOpportunity(opp.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 }

@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Opportunity } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
+import { InquiryFormDialog } from '@/components/InquiryFormDialog';
 
 export default function OpportunityDetails() {
   const { id } = useParams();
@@ -281,6 +282,14 @@ export default function OpportunityDetails() {
                       )}
                     </Button>
                   )}
+                  
+                  <div className="pt-2 border-t">
+                    <InquiryFormDialog 
+                      opportunityId={opportunity.id} 
+                      targetName={opportunity.title}
+                      targetType="opportunity"
+                    />
+                  </div>
                 </CardContent>
               </Card>
             </div>

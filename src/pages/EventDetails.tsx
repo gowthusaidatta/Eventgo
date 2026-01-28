@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Event } from '@/lib/types';
 import { format } from 'date-fns';
+import { InquiryFormDialog } from '@/components/InquiryFormDialog';
 
 // Sample events for fallback
 const sampleEvents: Event[] = [
@@ -365,6 +366,14 @@ export default function EventDetails() {
                   <p className="text-xs text-center text-muted-foreground">
                     By registering, you agree to the event's terms and conditions
                   </p>
+
+                  <div className="pt-2 border-t">
+                    <InquiryFormDialog 
+                      eventId={event.id} 
+                      targetName={event.title}
+                      targetType="event"
+                    />
+                  </div>
                 </CardContent>
               </Card>
             </div>

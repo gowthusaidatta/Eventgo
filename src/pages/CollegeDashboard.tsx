@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Calendar, Users, Eye, Settings, Trash2, Edit } from 'lucide-react';
+import { Plus, Calendar, Users, Eye, Settings, Trash2, Edit, MessageSquare } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,11 +11,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Event } from '@/lib/types';
 import { format } from 'date-fns';
+import { InquiriesInbox } from '@/components/InquiriesInbox';
 
 export default function CollegeDashboard() {
   const { user, profile, role, isLoading } = useAuth();
@@ -323,65 +325,86 @@ export default function CollegeDashboard() {
             ))}
           </div>
 
-          {/* Events List */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Events</CardTitle>
-              <CardDescription>Manage all your events here</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {events.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No events yet. Create your first event!</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {events.map((event) => (
-                    <div
-                      key={event.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold">{event.title}</h3>
-                          <Badge variant={event.status === 'published' ? 'default' : 'secondary'}>
-                            {event.status}
-                          </Badge>
-                          {!event.is_free && (
-                            <Badge variant="outline">₹{event.base_price}</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {format(new Date(event.start_date), 'MMM dd, yyyy')} • {event.city || 'TBD'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handlePublishToggle(event.id, event.status)}
-                        >
-                          {event.status === 'published' ? 'Unpublish' : 'Publish'}
-                        </Button>
-                        <Button variant="ghost" size="icon">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteEvent(event.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+          {/* Events and Inquiries */}
+          <Tabs defaultValue="events" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="events" className="gap-2">
+                <Calendar className="h-4 w-4" /> Events
+              </TabsTrigger>
+              <TabsTrigger value="inquiries" className="gap-2">
+                <MessageSquare className="h-4 w-4" /> Inquiries
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="events">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Your Events</CardTitle>
+                  <CardDescription>Manage all your events here</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {events.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No events yet. Create your first event!</p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  ) : (
+                    <div className="space-y-4">
+                      {events.map((event) => (
+                        <div
+                          key={event.id}
+                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold">{event.title}</h3>
+                              <Badge variant={event.status === 'published' ? 'default' : 'secondary'}>
+                                {event.status}
+                              </Badge>
+                              {!event.is_free && (
+                                <Badge variant="outline">₹{event.base_price}</Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {format(new Date(event.start_date), 'MMM dd, yyyy')} • {event.city || 'TBD'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handlePublishToggle(event.id, event.status)}
+                            >
+                              {event.status === 'published' ? 'Unpublish' : 'Publish'}
+                            </Button>
+                            <Button variant="ghost" size="icon">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteEvent(event.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="inquiries">
+              <Card>
+                <CardContent className="pt-6">
+                  <InquiriesInbox type="college" />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
       <Footer />

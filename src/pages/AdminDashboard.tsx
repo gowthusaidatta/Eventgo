@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Calendar, Briefcase, Building2, Shield, Search, Ban, CheckCircle, Trash2, Eye } from 'lucide-react';
+import { Users, Calendar, Briefcase, Building2, Shield, Search, Ban, CheckCircle, Trash2, Eye, Power, PowerOff } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,12 +10,15 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { CreateEventDialog } from '@/components/admin/CreateEventDialog';
 import { CreateOpportunityDialog } from '@/components/admin/CreateOpportunityDialog';
+import { EditEventDialog } from '@/components/admin/EditEventDialog';
+import { EditOpportunityDialog } from '@/components/admin/EditOpportunityDialog';
 
 export default function AdminDashboard() {
   const { user, role, isLoading } = useAuth();
@@ -29,6 +32,10 @@ export default function AdminDashboard() {
   const [companies, setCompanies] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('users');
+
+  // Bulk selection state
+  const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
+  const [selectedOpportunities, setSelectedOpportunities] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isLoading && (!user || role !== 'admin')) {
@@ -51,7 +58,6 @@ export default function AdminDashboard() {
       .order('created_at', { ascending: false });
     
     if (profilesData) {
-      // Get roles for each user
       const usersWithRoles = await Promise.all(
         profilesData.map(async (profile) => {
           const { data: roleData } = await supabase
@@ -92,6 +98,10 @@ export default function AdminDashboard() {
       .select('*')
       .order('created_at', { ascending: false });
     setCompanies(companiesData || []);
+
+    // Clear selections after refresh
+    setSelectedEvents([]);
+    setSelectedOpportunities([]);
   };
 
   const handleVerifyCollege = async (collegeId: string, isVerified: boolean) => {
@@ -146,6 +156,96 @@ export default function AdminDashboard() {
     }
   };
 
+  // Bulk actions for events
+  const handleBulkPublishEvents = async () => {
+    if (selectedEvents.length === 0) return;
+    const { error } = await supabase
+      .from('events')
+      .update({ status: 'published' })
+      .in('id', selectedEvents);
+    
+    if (!error) {
+      toast({ title: 'Success', description: `${selectedEvents.length} events published` });
+      fetchAllData();
+    }
+  };
+
+  const handleBulkDraftEvents = async () => {
+    if (selectedEvents.length === 0) return;
+    const { error } = await supabase
+      .from('events')
+      .update({ status: 'draft' })
+      .in('id', selectedEvents);
+    
+    if (!error) {
+      toast({ title: 'Success', description: `${selectedEvents.length} events set to draft` });
+      fetchAllData();
+    }
+  };
+
+  // Bulk actions for opportunities
+  const handleBulkActivateOpportunities = async () => {
+    if (selectedOpportunities.length === 0) return;
+    const { error } = await supabase
+      .from('opportunities')
+      .update({ is_active: true })
+      .in('id', selectedOpportunities);
+    
+    if (!error) {
+      toast({ title: 'Success', description: `${selectedOpportunities.length} opportunities activated` });
+      fetchAllData();
+    }
+  };
+
+  const handleBulkDeactivateOpportunities = async () => {
+    if (selectedOpportunities.length === 0) return;
+    const { error } = await supabase
+      .from('opportunities')
+      .update({ is_active: false })
+      .in('id', selectedOpportunities);
+    
+    if (!error) {
+      toast({ title: 'Success', description: `${selectedOpportunities.length} opportunities deactivated` });
+      fetchAllData();
+    }
+  };
+
+  const toggleEventSelection = (eventId: string) => {
+    setSelectedEvents(prev => 
+      prev.includes(eventId) 
+        ? prev.filter(id => id !== eventId)
+        : [...prev, eventId]
+    );
+  };
+
+  const toggleOpportunitySelection = (oppId: string) => {
+    setSelectedOpportunities(prev => 
+      prev.includes(oppId)
+        ? prev.filter(id => id !== oppId)
+        : [...prev, oppId]
+    );
+  };
+
+  const toggleAllEvents = (filteredEvents: any[]) => {
+    const filteredIds = filteredEvents.map(e => e.id);
+    const allSelected = filteredIds.every(id => selectedEvents.includes(id));
+    if (allSelected) {
+      setSelectedEvents(prev => prev.filter(id => !filteredIds.includes(id)));
+    } else {
+      setSelectedEvents(prev => [...new Set([...prev, ...filteredIds])]);
+    }
+  };
+
+  const toggleAllOpportunities = (filteredOpps: any[]) => {
+    const filteredIds = filteredOpps.map(o => o.id);
+    const allSelected = filteredIds.every(id => selectedOpportunities.includes(id));
+    if (allSelected) {
+      setSelectedOpportunities(prev => prev.filter(id => !filteredIds.includes(id)));
+    } else {
+      setSelectedOpportunities(prev => [...new Set([...prev, ...filteredIds])]);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -167,6 +267,9 @@ export default function AdminDashboard() {
     company: 'bg-primary text-primary-foreground',
     admin: 'bg-destructive text-destructive-foreground',
   };
+
+  const filteredEvents = events.filter(e => e.title.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredOpportunities = opportunities.filter(o => o.title.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -285,12 +388,30 @@ export default function AdminDashboard() {
 
                 {/* Events Tab */}
                 <TabsContent value="events">
-                  <div className="flex justify-end mb-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex gap-2">
+                      {selectedEvents.length > 0 && (
+                        <>
+                          <Button size="sm" variant="outline" onClick={handleBulkPublishEvents} className="gap-2">
+                            <Power className="h-4 w-4" /> Publish ({selectedEvents.length})
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={handleBulkDraftEvents} className="gap-2">
+                            <PowerOff className="h-4 w-4" /> Set Draft ({selectedEvents.length})
+                          </Button>
+                        </>
+                      )}
+                    </div>
                     <CreateEventDialog colleges={colleges} onSuccess={fetchAllData} />
                   </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={filteredEvents.length > 0 && filteredEvents.every(e => selectedEvents.includes(e.id))}
+                            onCheckedChange={() => toggleAllEvents(filteredEvents)}
+                          />
+                        </TableHead>
                         <TableHead>Event</TableHead>
                         <TableHead>College</TableHead>
                         <TableHead>Status</TableHead>
@@ -300,10 +421,14 @@ export default function AdminDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {events
-                        .filter(e => e.title.toLowerCase().includes(searchQuery.toLowerCase()))
-                        .map((e) => (
+                      {filteredEvents.map((e) => (
                         <TableRow key={e.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedEvents.includes(e.id)}
+                              onCheckedChange={() => toggleEventSelection(e.id)}
+                            />
+                          </TableCell>
                           <TableCell className="font-medium">{e.title}</TableCell>
                           <TableCell>{e.college?.name || 'N/A'}</TableCell>
                           <TableCell>
@@ -317,6 +442,7 @@ export default function AdminDashboard() {
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1">
+                              <EditEventDialog event={e} colleges={colleges} onSuccess={fetchAllData} />
                               <Button variant="ghost" size="sm" onClick={() => navigate(`/events/${e.id}`)}>
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -338,14 +464,34 @@ export default function AdminDashboard() {
 
                 {/* Opportunities Tab */}
                 <TabsContent value="opportunities">
-                  <div className="flex justify-end gap-2 mb-4">
-                    <CreateOpportunityDialog companies={companies} onSuccess={fetchAllData} defaultType="job" triggerLabel="Add Job" />
-                    <CreateOpportunityDialog companies={companies} onSuccess={fetchAllData} defaultType="internship" triggerLabel="Add Internship" />
-                    <CreateOpportunityDialog companies={companies} onSuccess={fetchAllData} defaultType="hackathon" triggerLabel="Add Hackathon" />
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex gap-2">
+                      {selectedOpportunities.length > 0 && (
+                        <>
+                          <Button size="sm" variant="outline" onClick={handleBulkActivateOpportunities} className="gap-2">
+                            <Power className="h-4 w-4" /> Activate ({selectedOpportunities.length})
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={handleBulkDeactivateOpportunities} className="gap-2">
+                            <PowerOff className="h-4 w-4" /> Deactivate ({selectedOpportunities.length})
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <CreateOpportunityDialog companies={companies} onSuccess={fetchAllData} defaultType="job" triggerLabel="Add Job" />
+                      <CreateOpportunityDialog companies={companies} onSuccess={fetchAllData} defaultType="internship" triggerLabel="Add Internship" />
+                      <CreateOpportunityDialog companies={companies} onSuccess={fetchAllData} defaultType="hackathon" triggerLabel="Add Hackathon" />
+                    </div>
                   </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={filteredOpportunities.length > 0 && filteredOpportunities.every(o => selectedOpportunities.includes(o.id))}
+                            onCheckedChange={() => toggleAllOpportunities(filteredOpportunities)}
+                          />
+                        </TableHead>
                         <TableHead>Title</TableHead>
                         <TableHead>Company</TableHead>
                         <TableHead>Type</TableHead>
@@ -355,10 +501,14 @@ export default function AdminDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {opportunities
-                        .filter(o => o.title.toLowerCase().includes(searchQuery.toLowerCase()))
-                        .map((o) => (
+                      {filteredOpportunities.map((o) => (
                         <TableRow key={o.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedOpportunities.includes(o.id)}
+                              onCheckedChange={() => toggleOpportunitySelection(o.id)}
+                            />
+                          </TableCell>
                           <TableCell className="font-medium">{o.title}</TableCell>
                           <TableCell>{o.company?.name || o.external_source || 'N/A'}</TableCell>
                           <TableCell>
@@ -371,14 +521,17 @@ export default function AdminDashboard() {
                           </TableCell>
                           <TableCell>{o.view_count}</TableCell>
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive"
-                              onClick={() => handleDeleteOpportunity(o.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <EditOpportunityDialog opportunity={o} companies={companies} onSuccess={fetchAllData} />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive"
+                                onClick={() => handleDeleteOpportunity(o.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}

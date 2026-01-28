@@ -14,6 +14,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
+import { CreateEventDialog } from '@/components/admin/CreateEventDialog';
+import { CreateOpportunityDialog } from '@/components/admin/CreateOpportunityDialog';
 
 export default function AdminDashboard() {
   const { user, role, isLoading } = useAuth();
@@ -283,6 +285,9 @@ export default function AdminDashboard() {
 
                 {/* Events Tab */}
                 <TabsContent value="events">
+                  <div className="flex justify-end mb-4">
+                    <CreateEventDialog colleges={colleges} onSuccess={fetchAllData} />
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -333,6 +338,11 @@ export default function AdminDashboard() {
 
                 {/* Opportunities Tab */}
                 <TabsContent value="opportunities">
+                  <div className="flex justify-end gap-2 mb-4">
+                    <CreateOpportunityDialog companies={companies} onSuccess={fetchAllData} defaultType="job" triggerLabel="Add Job" />
+                    <CreateOpportunityDialog companies={companies} onSuccess={fetchAllData} defaultType="internship" triggerLabel="Add Internship" />
+                    <CreateOpportunityDialog companies={companies} onSuccess={fetchAllData} defaultType="hackathon" triggerLabel="Add Hackathon" />
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow>

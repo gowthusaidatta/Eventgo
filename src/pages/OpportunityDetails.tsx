@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Opportunity } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { InquiryFormDialog } from '@/components/InquiryFormDialog';
+import { RegistrationFormDialog, RegistrationFormData } from '@/components/RegistrationFormDialog';
 
 export default function OpportunityDetails() {
   const { id } = useParams();
@@ -28,6 +29,8 @@ export default function OpportunityDetails() {
   const [coverLetter, setCoverLetter] = useState('');
   const [isApplying, setIsApplying] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+  const [registrationData, setRegistrationData] = useState<RegistrationFormData | null>(null);
 
   useEffect(() => {
     fetchOpportunityDetails();
@@ -62,6 +65,13 @@ export default function OpportunityDetails() {
       return;
     }
 
+    // Show registration form first
+    setShowRegistrationForm(true);
+  };
+
+  const handleRegistrationFormSubmit = async (data: RegistrationFormData) => {
+    setRegistrationData(data);
+    setShowRegistrationForm(false);
     setShowApplyDialog(true);
   };
 
@@ -380,6 +390,17 @@ export default function OpportunityDetails() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Registration Form Dialog */}
+        <RegistrationFormDialog
+          open={showRegistrationForm}
+          onOpenChange={setShowRegistrationForm}
+          onSubmit={handleRegistrationFormSubmit}
+          title={`Apply for ${opportunity.title}`}
+          description="Please fill in your details to proceed with your application"
+          submitLabel="Continue"
+          isProcessing={isApplying}
+        />
       </main>
       <Footer />
     </div>

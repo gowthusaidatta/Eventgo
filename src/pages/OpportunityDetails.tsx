@@ -107,6 +107,18 @@ export default function OpportunityDetails() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1 bg-muted/30">
+        {/* Hero Banner if image exists */}
+        {opportunity.image_url && (
+          <div className="relative h-48 md:h-64">
+            <img
+              src={opportunity.image_url}
+              alt={opportunity.title}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+          </div>
+        )}
+        
         <div className="container mx-auto px-4 py-8">
           <Button
             variant="ghost"
@@ -192,6 +204,22 @@ export default function OpportunityDetails() {
                   </p>
                 </CardContent>
               </Card>
+
+              {/* Video Section */}
+              {opportunity.video_url && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Video</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <video
+                      src={opportunity.video_url}
+                      controls
+                      className="w-full rounded-lg"
+                    />
+                  </CardContent>
+                </Card>
+              )}
 
               {opportunity.requirements && (
                 <Card>

@@ -291,6 +291,22 @@ export default function EventDetails() {
                 </CardContent>
               </Card>
 
+              {/* Video Section */}
+              {event.video_url && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Event Video</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <video
+                      src={event.video_url}
+                      controls
+                      className="w-full rounded-lg"
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
               {/* College Info */}
               {event.college && (
                 <Card>

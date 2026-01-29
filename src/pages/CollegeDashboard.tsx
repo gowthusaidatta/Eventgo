@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Users, Eye, Trash2, Edit, MessageSquare, Briefcase, Trophy } from 'lucide-react';
+import { Calendar, Users, Eye, Trash2, Edit, MessageSquare, Briefcase, Trophy, Search, Filter } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +17,8 @@ import { format } from 'date-fns';
 import { InquiriesInbox } from '@/components/InquiriesInbox';
 import { CreateEventDialog } from '@/components/college/CreateEventDialog';
 import { CreateOpportunityDialog } from '@/components/college/CreateOpportunityDialog';
+import { EditEventDialog } from '@/components/college/EditEventDialog';
+import { EditOpportunityDialog } from '@/components/college/EditOpportunityDialog';
 
 export default function CollegeDashboard() {
   const { user, profile, role, isLoading } = useAuth();
@@ -24,6 +28,16 @@ export default function CollegeDashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [college, setCollege] = useState<any>(null);
+  
+  // Search & Filter state
+  const [eventSearch, setEventSearch] = useState('');
+  const [eventStatusFilter, setEventStatusFilter] = useState<string>('all');
+  const [oppSearch, setOppSearch] = useState('');
+  const [oppTypeFilter, setOppTypeFilter] = useState<string>('all');
+  
+  // Edit dialog state
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | null>(null);
 
   useEffect(() => {
     if (!isLoading && (!user || role !== 'college')) {
@@ -38,7 +52,6 @@ export default function CollegeDashboard() {
   }, [user]);
 
   const fetchCollegeData = async () => {
-    // Fetch college
     const { data: collegeData } = await supabase
       .from('colleges')
       .select('*')
@@ -48,7 +61,6 @@ export default function CollegeDashboard() {
     setCollege(collegeData);
 
     if (collegeData) {
-      // Fetch events
       const { data: eventsData } = await supabase
         .from('events')
         .select('*')
@@ -58,8 +70,6 @@ export default function CollegeDashboard() {
       setEvents((eventsData as unknown as Event[]) || []);
     }
 
-    // Fetch opportunities (college-created ones without company_id)
-    // For now, we'll fetch all opportunities and filter or show all
     const { data: oppsData } = await supabase
       .from('opportunities')
       .select('*')
@@ -113,6 +123,22 @@ export default function CollegeDashboard() {
       fetchCollegeData();
     }
   };
+
+  // Filter events
+  const filteredEvents = events.filter(event => {
+    const matchesSearch = event.title.toLowerCase().includes(eventSearch.toLowerCase()) ||
+      event.city?.toLowerCase().includes(eventSearch.toLowerCase());
+    const matchesStatus = eventStatusFilter === 'all' || event.status === eventStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Filter opportunities
+  const filteredOpportunities = opportunities.filter(opp => {
+    const matchesSearch = opp.title.toLowerCase().includes(oppSearch.toLowerCase()) ||
+      opp.location?.toLowerCase().includes(oppSearch.toLowerCase());
+    const matchesType = oppTypeFilter === 'all' || opp.type === oppTypeFilter;
+    return matchesSearch && matchesType;
+  });
 
   if (isLoading) {
     return (
@@ -199,18 +225,43 @@ export default function CollegeDashboard() {
             <TabsContent value="events">
               <Card>
                 <CardHeader>
-                  <CardTitle>Your Events</CardTitle>
-                  <CardDescription>Manage all your events here</CardDescription>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <CardTitle>Your Events</CardTitle>
+                      <CardDescription>Manage all your events here</CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search events..."
+                          value={eventSearch}
+                          onChange={(e) => setEventSearch(e.target.value)}
+                          className="pl-9 w-48"
+                        />
+                      </div>
+                      <Select value={eventStatusFilter} onValueChange={setEventStatusFilter}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Status</SelectItem>
+                          <SelectItem value="published">Published</SelectItem>
+                          <SelectItem value="draft">Draft</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  {events.length === 0 ? (
+                  {filteredEvents.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No events yet. Create your first event!</p>
+                      <p>{events.length === 0 ? 'No events yet. Create your first event!' : 'No events match your search.'}</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {events.map((event) => (
+                      {filteredEvents.map((event) => (
                         <div
                           key={event.id}
                           className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -246,7 +297,7 @@ export default function CollegeDashboard() {
                             >
                               {event.status === 'published' ? 'Unpublish' : 'Publish'}
                             </Button>
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" onClick={() => setEditingEvent(event)}>
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
@@ -269,18 +320,45 @@ export default function CollegeDashboard() {
             <TabsContent value="opportunities">
               <Card>
                 <CardHeader>
-                  <CardTitle>Your Opportunities</CardTitle>
-                  <CardDescription>Manage hackathons, jobs, internships, and competitions</CardDescription>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <CardTitle>Your Opportunities</CardTitle>
+                      <CardDescription>Manage hackathons, jobs, internships, and competitions</CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search opportunities..."
+                          value={oppSearch}
+                          onChange={(e) => setOppSearch(e.target.value)}
+                          className="pl-9 w-48"
+                        />
+                      </div>
+                      <Select value={oppTypeFilter} onValueChange={setOppTypeFilter}>
+                        <SelectTrigger className="w-36">
+                          <SelectValue placeholder="Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Types</SelectItem>
+                          <SelectItem value="hackathon">Hackathon</SelectItem>
+                          <SelectItem value="competition">Competition</SelectItem>
+                          <SelectItem value="job">Job</SelectItem>
+                          <SelectItem value="internship">Internship</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  {opportunities.length === 0 ? (
+                  {filteredOpportunities.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No opportunities yet. Create your first opportunity!</p>
+                      <p>{opportunities.length === 0 ? 'No opportunities yet. Create your first opportunity!' : 'No opportunities match your search.'}</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {opportunities.map((opp) => (
+                      {filteredOpportunities.map((opp) => (
                         <div
                           key={opp.id}
                           className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -317,7 +395,7 @@ export default function CollegeDashboard() {
                             >
                               {opp.is_active ? 'Deactivate' : 'Activate'}
                             </Button>
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" onClick={() => setEditingOpportunity(opp)}>
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
@@ -348,6 +426,25 @@ export default function CollegeDashboard() {
         </div>
       </main>
       <Footer />
+
+      {/* Edit Dialogs */}
+      {editingEvent && (
+        <EditEventDialog
+          event={editingEvent}
+          open={!!editingEvent}
+          onOpenChange={(open) => !open && setEditingEvent(null)}
+          onEventUpdated={fetchCollegeData}
+        />
+      )}
+
+      {editingOpportunity && (
+        <EditOpportunityDialog
+          opportunity={editingOpportunity}
+          open={!!editingOpportunity}
+          onOpenChange={(open) => !open && setEditingOpportunity(null)}
+          onOpportunityUpdated={fetchCollegeData}
+        />
+      )}
     </div>
   );
 }

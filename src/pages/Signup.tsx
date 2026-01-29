@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Eye, EyeOff, Loader2, GraduationCap, Building2, Briefcase, Shield } from 'lucide-react';
+import { Eye, EyeOff, Loader2, GraduationCap, Building2, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { AppRole } from '@/lib/types';
@@ -18,6 +19,9 @@ const roles: { id: AppRole; label: string; icon: any; description: string }[] = 
   { id: 'company', label: 'Company', icon: Briefcase, description: 'Post jobs & hire talent' },
 ];
 
+const currentYear = new Date().getFullYear();
+const graduationYears = Array.from({ length: 10 }, (_, i) => (currentYear + i - 4).toString());
+
 export default function Signup() {
   const [searchParams] = useSearchParams();
   const initialRole = searchParams.get('role') as AppRole || 'student';
@@ -25,6 +29,9 @@ export default function Signup() {
   const [selectedRole, setSelectedRole] = useState<AppRole>(initialRole);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [collegeName, setCollegeName] = useState('');
+  const [graduationYear, setGraduationYear] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [organizationName, setOrganizationName] = useState('');
@@ -34,6 +41,11 @@ export default function Signup() {
   const { signUp } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const validatePhone = (phoneNumber: string): boolean => {
+    const cleaned = phoneNumber.replace(/\D/g, '');
+    return /^[6-9]\d{9}$/.test(cleaned);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,10 +61,26 @@ export default function Signup() {
       return;
     }
 
+    // Validate phone for students
+    if (selectedRole === 'student' && phone && !validatePhone(phone)) {
+      toast({
+        title: 'Invalid Phone Number',
+        description: 'Please enter a valid 10-digit phone number',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
-    const additionalData: any = {};
-    if (selectedRole === 'college') {
+    const additionalData: any = {
+      phone: phone || null,
+    };
+    
+    if (selectedRole === 'student') {
+      additionalData.collegeName = collegeName || null;
+      additionalData.graduationYear = graduationYear ? parseInt(graduationYear) : null;
+    } else if (selectedRole === 'college') {
       additionalData.collegeName = organizationName;
       additionalData.city = city;
     } else if (selectedRole === 'company') {
@@ -89,7 +117,7 @@ export default function Signup() {
           <CardDescription>Join EvntGo to discover amazing opportunities</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-5">
             {/* Role Selection */}
             <div className="space-y-3">
               <Label>I am a</Label>
@@ -118,7 +146,7 @@ export default function Signup() {
 
             {/* Name */}
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
+              <Label htmlFor="fullName">Full Name *</Label>
               <Input
                 id="fullName"
                 placeholder="John Doe"
@@ -128,11 +156,55 @@ export default function Signup() {
               />
             </div>
 
+            {/* Phone Number */}
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number {selectedRole === 'student' ? '' : '(Optional)'}</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="9876543210"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                maxLength={10}
+              />
+            </div>
+
+            {/* Student-specific fields */}
+            {selectedRole === 'student' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="collegeName">College Name</Label>
+                  <Input
+                    id="collegeName"
+                    placeholder="Your college/university name"
+                    value={collegeName}
+                    onChange={(e) => setCollegeName(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="graduationYear">Year of Passout</Label>
+                  <Select value={graduationYear} onValueChange={setGraduationYear}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {graduationYears.map((year) => (
+                        <SelectItem key={year} value={year}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+
             {/* Organization Name (for college/company) */}
             {(selectedRole === 'college' || selectedRole === 'company') && (
               <div className="space-y-2">
                 <Label htmlFor="orgName">
-                  {selectedRole === 'college' ? 'College Name' : 'Company Name'}
+                  {selectedRole === 'college' ? 'College Name *' : 'Company Name *'}
                 </Label>
                 <Input
                   id="orgName"
@@ -159,7 +231,7 @@ export default function Signup() {
 
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email *</Label>
               <Input
                 id="email"
                 type="email"
@@ -172,7 +244,7 @@ export default function Signup() {
 
             {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Password *</Label>
               <div className="relative">
                 <Input
                   id="password"

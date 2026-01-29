@@ -104,14 +104,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) return { error };
 
     if (data.user) {
-      // Create profile
+      // Create profile with additional data
+      const profileData: any = {
+        user_id: data.user.id,
+        full_name: fullName,
+        email: email,
+      };
+      
+      // Add phone if provided
+      if (additionalData?.phone) {
+        profileData.phone = additionalData.phone;
+      }
+      
+      // Add student-specific fields
+      if (role === 'student') {
+        if (additionalData?.collegeName) {
+          profileData.college_name = additionalData.collegeName;
+        }
+        if (additionalData?.graduationYear) {
+          profileData.graduation_year = additionalData.graduationYear;
+        }
+      }
+
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert({
-          user_id: data.user.id,
-          full_name: fullName,
-          email: email,
-        });
+        .insert(profileData);
 
       if (profileError) {
         console.error('Profile creation error:', profileError);

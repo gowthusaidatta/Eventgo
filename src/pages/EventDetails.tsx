@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Event } from '@/lib/types';
 import { format } from 'date-fns';
 import { InquiryFormDialog } from '@/components/InquiryFormDialog';
+import { RegistrationFormDialog, RegistrationFormData } from '@/components/RegistrationFormDialog';
 
 // Sample events for fallback
 const sampleEvents: Event[] = [
@@ -93,6 +94,8 @@ export default function EventDetails() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [registrationComplete, setRegistrationComplete] = useState(false);
   const [isSampleEvent, setIsSampleEvent] = useState(false);
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+  const [registrationData, setRegistrationData] = useState<RegistrationFormData | null>(null);
 
   useEffect(() => {
     fetchEventDetails();
@@ -148,6 +151,14 @@ export default function EventDetails() {
       return;
     }
 
+    // Show registration form to collect details
+    setShowRegistrationForm(true);
+  };
+
+  const handleRegistrationFormSubmit = async (data: RegistrationFormData) => {
+    setRegistrationData(data);
+    setShowRegistrationForm(false);
+
     if (isSampleEvent) {
       toast({ 
         title: 'Demo Event', 
@@ -163,10 +174,12 @@ export default function EventDetails() {
       return;
     }
 
-    await processRegistration();
+    await processRegistration(data);
   };
 
-  const processRegistration = async () => {
+  const processRegistration = async (data?: RegistrationFormData) => {
+    const formData = data || registrationData;
+    
     if (isSampleEvent) {
       setRegistrationComplete(true);
       setIsRegistered(true);
@@ -176,13 +189,23 @@ export default function EventDetails() {
 
     setIsProcessing(true);
 
-    // Create registration
+    // Create registration with additional team_members data for form details
     const { data: regData, error: regError } = await supabase
       .from('registrations')
       .insert({
         user_id: user?.id,
         event_id: event?.id,
         status: 'confirmed',
+        team_members: formData ? {
+          registrant: {
+            fullName: formData.fullName,
+            email: formData.email,
+            phone: formData.phone,
+            college: formData.college,
+            graduationYear: formData.graduationYear,
+            stream: formData.stream,
+          }
+        } : null
       })
       .select()
       .single();
@@ -439,17 +462,28 @@ export default function EventDetails() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
                 Cancel
-              </Button>
-              <Button 
-                className="bg-secondary hover:bg-secondary/90"
-                onClick={processRegistration}
-                disabled={isProcessing}
-              >
-                {isProcessing ? 'Processing...' : `Pay ₹${event.base_price}`}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </Button>
+            <Button 
+              className="bg-secondary hover:bg-secondary/90"
+              onClick={() => processRegistration()}
+              disabled={isProcessing}
+            >
+              {isProcessing ? 'Processing...' : `Pay ₹${event.base_price}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Registration Form Dialog */}
+      <RegistrationFormDialog
+        open={showRegistrationForm}
+        onOpenChange={setShowRegistrationForm}
+        onSubmit={handleRegistrationFormSubmit}
+        title={`Register for ${event.title}`}
+        description="Please fill in your details to complete registration"
+        submitLabel={event.is_free ? 'Register' : 'Continue to Payment'}
+        isProcessing={isProcessing}
+      />
       </main>
       <Footer />
     </div>

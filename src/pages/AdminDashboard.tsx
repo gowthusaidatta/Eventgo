@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Calendar, Briefcase, Building2, Shield, Search, Ban, CheckCircle, Trash2, Eye, Power, PowerOff, MessageSquare } from 'lucide-react';
+import { Users, Calendar, Briefcase, Building2, Shield, Search, Ban, CheckCircle, Trash2, Eye, Power, PowerOff, MessageSquare, Download } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +23,7 @@ import { EditOpportunityDialog } from '@/components/admin/EditOpportunityDialog'
 import { CreateUserDialog } from '@/components/admin/CreateUserDialog';
 import { InquiriesInbox } from '@/components/InquiriesInbox';
 import { UserDetailsDialog } from '@/components/admin/UserDetailsDialog';
+import { exportUsersToCSV } from '@/lib/csvExport';
 
 export default function AdminDashboard() {
   const { user, role, isLoading } = useAuth();
@@ -380,7 +381,15 @@ export default function AdminDashboard() {
 
                 {/* Users Tab */}
                 <TabsContent value="users">
-                  <div className="flex justify-end mb-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => exportUsersToCSV(users, `users_export_${new Date().toISOString().split('T')[0]}.csv`)}
+                    >
+                      <Download className="h-4 w-4" /> Export CSV
+                    </Button>
                     <CreateUserDialog onSuccess={fetchAllData} />
                   </div>
                   <Table>
@@ -733,7 +742,8 @@ export default function AdminDashboard() {
       <UserDetailsDialog 
         user={selectedUser} 
         open={userDetailsOpen} 
-        onOpenChange={setUserDetailsOpen} 
+        onOpenChange={setUserDetailsOpen}
+        onUserUpdated={fetchAllData}
       />
     </div>
   );

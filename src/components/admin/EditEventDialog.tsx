@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Pencil } from 'lucide-react';
+import { MediaUpload } from './MediaUpload';
 import type { Database } from '@/integrations/supabase/types';
 
 type EventStatus = Database['public']['Enums']['event_status'];
@@ -26,6 +27,8 @@ interface EditEventDialogProps {
     base_price: number | null;
     max_participants: number | null;
     status: EventStatus | null;
+    banner_url?: string | null;
+    video_url?: string | null;
   };
   colleges: { id: string; name: string }[];
   onSuccess: () => void;
@@ -53,6 +56,8 @@ export function EditEventDialog({ event, colleges, onSuccess }: EditEventDialogP
     base_price: event.base_price || 0,
     max_participants: event.max_participants?.toString() || '',
     status: event.status || 'draft' as EventStatus,
+    banner_url: event.banner_url || '',
+    video_url: event.video_url || '',
   });
 
   useEffect(() => {
@@ -69,6 +74,8 @@ export function EditEventDialog({ event, colleges, onSuccess }: EditEventDialogP
         base_price: event.base_price || 0,
         max_participants: event.max_participants?.toString() || '',
         status: event.status || 'draft',
+        banner_url: event.banner_url || '',
+        video_url: event.video_url || '',
       });
     }
   }, [open, event]);
@@ -89,6 +96,8 @@ export function EditEventDialog({ event, colleges, onSuccess }: EditEventDialogP
       base_price: formData.is_free ? 0 : formData.base_price,
       max_participants: formData.max_participants ? parseInt(formData.max_participants) : null,
       status: formData.status,
+      banner_url: formData.banner_url || null,
+      video_url: formData.video_url || null,
     }).eq('id', event.id);
 
     setLoading(false);
@@ -132,6 +141,25 @@ export function EditEventDialog({ event, colleges, onSuccess }: EditEventDialogP
                 rows={3}
               />
             </div>
+            
+            {/* Media Upload Section */}
+            <div className="col-span-2 grid grid-cols-2 gap-4">
+              <MediaUpload
+                type="image"
+                currentUrl={formData.banner_url}
+                onUpload={(url) => setFormData({ ...formData, banner_url: url })}
+                onRemove={() => setFormData({ ...formData, banner_url: '' })}
+                folder="events"
+              />
+              <MediaUpload
+                type="video"
+                currentUrl={formData.video_url}
+                onUpload={(url) => setFormData({ ...formData, video_url: url })}
+                onRemove={() => setFormData({ ...formData, video_url: '' })}
+                folder="events"
+              />
+            </div>
+
             <div>
               <Label htmlFor="college">College *</Label>
               <Select

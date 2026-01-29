@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus } from 'lucide-react';
+import { MediaUpload } from './MediaUpload';
 
 interface CreateEventDialogProps {
   colleges: { id: string; name: string }[];
@@ -31,6 +32,8 @@ export function CreateEventDialog({ colleges, onSuccess }: CreateEventDialogProp
     base_price: 0,
     max_participants: '',
     status: 'draft' as 'draft' | 'published',
+    banner_url: '',
+    video_url: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,6 +56,8 @@ export function CreateEventDialog({ colleges, onSuccess }: CreateEventDialogProp
       base_price: formData.is_free ? 0 : formData.base_price,
       max_participants: formData.max_participants ? parseInt(formData.max_participants) : null,
       status: formData.status,
+      banner_url: formData.banner_url || null,
+      video_url: formData.video_url || null,
     });
 
     setLoading(false);
@@ -73,6 +78,8 @@ export function CreateEventDialog({ colleges, onSuccess }: CreateEventDialogProp
         base_price: 0,
         max_participants: '',
         status: 'draft',
+        banner_url: '',
+        video_url: '',
       });
       onSuccess();
     }
@@ -109,6 +116,25 @@ export function CreateEventDialog({ colleges, onSuccess }: CreateEventDialogProp
                 rows={3}
               />
             </div>
+
+            {/* Media Upload Section */}
+            <div className="col-span-2 grid grid-cols-2 gap-4">
+              <MediaUpload
+                type="image"
+                currentUrl={formData.banner_url}
+                onUpload={(url) => setFormData({ ...formData, banner_url: url })}
+                onRemove={() => setFormData({ ...formData, banner_url: '' })}
+                folder="events"
+              />
+              <MediaUpload
+                type="video"
+                currentUrl={formData.video_url}
+                onUpload={(url) => setFormData({ ...formData, video_url: url })}
+                onRemove={() => setFormData({ ...formData, video_url: '' })}
+                folder="events"
+              />
+            </div>
+
             <div>
               <Label htmlFor="college">College *</Label>
               <Select

@@ -77,6 +77,7 @@ export interface Event {
   description?: string;
   short_description?: string;
   banner_url?: string;
+  video_url?: string;
   venue?: string;
   city?: string;
   start_date: string;
@@ -130,6 +131,8 @@ export interface Opportunity {
   external_url?: string;
   skills_required?: string[];
   experience_level?: string;
+  image_url?: string;
+  video_url?: string;
   is_active: boolean;
   is_featured: boolean;
   view_count: number;

@@ -1,23 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Calendar, Users, Eye, Settings, Trash2, Edit, MessageSquare } from 'lucide-react';
+import { Calendar, Users, Eye, Trash2, Edit, MessageSquare, Briefcase, Trophy } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Event } from '@/lib/types';
+import { Event, Opportunity } from '@/lib/types';
 import { format } from 'date-fns';
 import { InquiriesInbox } from '@/components/InquiriesInbox';
+import { CreateEventDialog } from '@/components/college/CreateEventDialog';
+import { CreateOpportunityDialog } from '@/components/college/CreateOpportunityDialog';
 
 export default function CollegeDashboard() {
   const { user, profile, role, isLoading } = useAuth();
@@ -25,24 +22,8 @@ export default function CollegeDashboard() {
   const { toast } = useToast();
   
   const [events, setEvents] = useState<Event[]>([]);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [college, setCollege] = useState<any>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Form state
-  const [formData, setFormData] = useState({
-    title: '',
-    short_description: '',
-    description: '',
-    venue: '',
-    city: '',
-    start_date: '',
-    end_date: '',
-    is_free: true,
-    base_price: 0,
-    max_participants: 100,
-    tags: '',
-  });
 
   useEffect(() => {
     if (!isLoading && (!user || role !== 'college')) {
@@ -76,54 +57,16 @@ export default function CollegeDashboard() {
       
       setEvents((eventsData as unknown as Event[]) || []);
     }
-  };
 
-  const handleCreateEvent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!college) return;
+    // Fetch opportunities (college-created ones without company_id)
+    // For now, we'll fetch all opportunities and filter or show all
+    const { data: oppsData } = await supabase
+      .from('opportunities')
+      .select('*')
+      .is('company_id', null)
+      .order('created_at', { ascending: false });
     
-    setIsSubmitting(true);
-
-    const { error } = await supabase
-      .from('events')
-      .insert({
-        college_id: college.id,
-        title: formData.title,
-        short_description: formData.short_description,
-        description: formData.description,
-        venue: formData.venue,
-        city: formData.city || college.city,
-        start_date: formData.start_date,
-        end_date: formData.end_date,
-        is_free: formData.is_free,
-        base_price: formData.is_free ? 0 : formData.base_price,
-        max_participants: formData.max_participants,
-        tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
-        status: 'published',
-        slug: formData.title.toLowerCase().replace(/\s+/g, '-'),
-      });
-
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Success', description: 'Event created successfully!' });
-      setIsDialogOpen(false);
-      setFormData({
-        title: '',
-        short_description: '',
-        description: '',
-        venue: '',
-        city: '',
-        start_date: '',
-        end_date: '',
-        is_free: true,
-        base_price: 0,
-        max_participants: 100,
-        tags: '',
-      });
-      fetchCollegeData();
-    }
-    setIsSubmitting(false);
+    setOpportunities((oppsData as unknown as Opportunity[]) || []);
   };
 
   const handleDeleteEvent = async (eventId: string) => {
@@ -132,6 +75,16 @@ export default function CollegeDashboard() {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Deleted', description: 'Event deleted successfully' });
+      fetchCollegeData();
+    }
+  };
+
+  const handleDeleteOpportunity = async (opportunityId: string) => {
+    const { error } = await supabase.from('opportunities').delete().eq('id', opportunityId);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Deleted', description: 'Opportunity deleted successfully' });
       fetchCollegeData();
     }
   };
@@ -149,6 +102,18 @@ export default function CollegeDashboard() {
     }
   };
 
+  const handleOpportunityToggle = async (opportunityId: string, currentStatus: boolean) => {
+    const { error } = await supabase
+      .from('opportunities')
+      .update({ is_active: !currentStatus })
+      .eq('id', opportunityId);
+    
+    if (!error) {
+      toast({ title: 'Updated', description: `Opportunity ${!currentStatus ? 'activated' : 'deactivated'}` });
+      fetchCollegeData();
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -159,9 +124,20 @@ export default function CollegeDashboard() {
 
   const stats = [
     { label: 'Total Events', value: events.length, icon: Calendar },
+    { label: 'Opportunities', value: opportunities.length, icon: Briefcase },
     { label: 'Published', value: events.filter(e => e.status === 'published').length, icon: Eye },
     { label: 'Total Registrations', value: '0', icon: Users },
   ];
+
+  const getOpportunityTypeBadge = (type: string) => {
+    const colors: Record<string, string> = {
+      hackathon: 'bg-purple-100 text-purple-800',
+      competition: 'bg-blue-100 text-blue-800',
+      job: 'bg-green-100 text-green-800',
+      internship: 'bg-orange-100 text-orange-800',
+    };
+    return colors[type] || 'bg-gray-100 text-gray-800';
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -169,149 +145,30 @@ export default function CollegeDashboard() {
       <main className="flex-1 bg-muted/30">
         <div className="container mx-auto px-4 py-8">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
             <div>
               <h1 className="text-3xl font-bold mb-2">College Dashboard</h1>
-              <p className="text-muted-foreground">{college?.name || 'Manage your events'}</p>
+              <p className="text-muted-foreground">{college?.name || 'Manage your events and opportunities'}</p>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-secondary hover:bg-secondary/90">
-                  <Plus className="h-4 w-4 mr-2" /> Create Event
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Create New Event</DialogTitle>
-                  <DialogDescription>Fill in the details to create a new event</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleCreateEvent} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2">
-                      <Label htmlFor="title">Event Title *</Label>
-                      <Input
-                        id="title"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        placeholder="TechFest 2026"
-                        required
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <Label htmlFor="short_description">Short Description *</Label>
-                      <Input
-                        id="short_description"
-                        value={formData.short_description}
-                        onChange={(e) => setFormData({ ...formData, short_description: e.target.value })}
-                        placeholder="A brief description for cards"
-                        required
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <Label htmlFor="description">Full Description</Label>
-                      <Textarea
-                        id="description"
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        placeholder="Detailed event description..."
-                        rows={4}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="venue">Venue</Label>
-                      <Input
-                        id="venue"
-                        value={formData.venue}
-                        onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
-                        placeholder="Main Auditorium"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="city">City</Label>
-                      <Input
-                        id="city"
-                        value={formData.city}
-                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                        placeholder="Mumbai"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="start_date">Start Date & Time *</Label>
-                      <Input
-                        id="start_date"
-                        type="datetime-local"
-                        value={formData.start_date}
-                        onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="end_date">End Date & Time *</Label>
-                      <Input
-                        id="end_date"
-                        type="datetime-local"
-                        value={formData.end_date}
-                        onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="max_participants">Max Participants</Label>
-                      <Input
-                        id="max_participants"
-                        type="number"
-                        value={formData.max_participants}
-                        onChange={(e) => setFormData({ ...formData, max_participants: parseInt(e.target.value) })}
-                        min={1}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="tags">Tags (comma-separated)</Label>
-                      <Input
-                        id="tags"
-                        value={formData.tags}
-                        onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                        placeholder="Tech, Coding, Robotics"
-                      />
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="is_free"
-                          checked={formData.is_free}
-                          onCheckedChange={(checked) => setFormData({ ...formData, is_free: checked })}
-                        />
-                        <Label htmlFor="is_free">Free Event</Label>
-                      </div>
-                    </div>
-                    {!formData.is_free && (
-                      <div>
-                        <Label htmlFor="base_price">Ticket Price (₹)</Label>
-                        <Input
-                          id="base_price"
-                          type="number"
-                          value={formData.base_price}
-                          onChange={(e) => setFormData({ ...formData, base_price: parseFloat(e.target.value) })}
-                          min={0}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={isSubmitting} className="bg-secondary hover:bg-secondary/90">
-                      {isSubmitting ? 'Creating...' : 'Create Event'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <div className="flex gap-2">
+              {college && (
+                <>
+                  <CreateEventDialog 
+                    collegeId={college.id} 
+                    collegeCity={college.city}
+                    onEventCreated={fetchCollegeData}
+                  />
+                  <CreateOpportunityDialog 
+                    collegeId={college.id}
+                    onOpportunityCreated={fetchCollegeData}
+                  />
+                </>
+              )}
+            </div>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {stats.map((stat) => (
               <Card key={stat.label}>
                 <CardContent className="p-6 flex items-center justify-between">
@@ -325,11 +182,14 @@ export default function CollegeDashboard() {
             ))}
           </div>
 
-          {/* Events and Inquiries */}
+          {/* Events, Opportunities and Inquiries */}
           <Tabs defaultValue="events" className="space-y-4">
             <TabsList>
               <TabsTrigger value="events" className="gap-2">
                 <Calendar className="h-4 w-4" /> Events
+              </TabsTrigger>
+              <TabsTrigger value="opportunities" className="gap-2">
+                <Trophy className="h-4 w-4" /> Opportunities
               </TabsTrigger>
               <TabsTrigger value="inquiries" className="gap-2">
                 <MessageSquare className="h-4 w-4" /> Inquiries
@@ -355,19 +215,28 @@ export default function CollegeDashboard() {
                           key={event.id}
                           className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                         >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-semibold">{event.title}</h3>
-                              <Badge variant={event.status === 'published' ? 'default' : 'secondary'}>
-                                {event.status}
-                              </Badge>
-                              {!event.is_free && (
-                                <Badge variant="outline">₹{event.base_price}</Badge>
-                              )}
+                          <div className="flex-1 flex items-start gap-4">
+                            {event.banner_url && (
+                              <img 
+                                src={event.banner_url} 
+                                alt={event.title}
+                                className="w-16 h-16 object-cover rounded-md hidden sm:block"
+                              />
+                            )}
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-semibold">{event.title}</h3>
+                                <Badge variant={event.status === 'published' ? 'default' : 'secondary'}>
+                                  {event.status}
+                                </Badge>
+                                {!event.is_free && (
+                                  <Badge variant="outline">₹{event.base_price}</Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {format(new Date(event.start_date), 'MMM dd, yyyy')} • {event.city || 'TBD'}
+                              </p>
                             </div>
-                            <p className="text-sm text-muted-foreground">
-                              {format(new Date(event.start_date), 'MMM dd, yyyy')} • {event.city || 'TBD'}
-                            </p>
                           </div>
                           <div className="flex items-center gap-2">
                             <Button
@@ -385,6 +254,77 @@ export default function CollegeDashboard() {
                               size="icon"
                               className="text-destructive hover:text-destructive"
                               onClick={() => handleDeleteEvent(event.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="opportunities">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Your Opportunities</CardTitle>
+                  <CardDescription>Manage hackathons, jobs, internships, and competitions</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {opportunities.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No opportunities yet. Create your first opportunity!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {opportunities.map((opp) => (
+                        <div
+                          key={opp.id}
+                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex-1 flex items-start gap-4">
+                            {opp.image_url && (
+                              <img 
+                                src={opp.image_url} 
+                                alt={opp.title}
+                                className="w-16 h-16 object-cover rounded-md hidden sm:block"
+                              />
+                            )}
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-semibold">{opp.title}</h3>
+                                <Badge className={getOpportunityTypeBadge(opp.type)}>
+                                  {opp.type}
+                                </Badge>
+                                <Badge variant={opp.is_active ? 'default' : 'secondary'}>
+                                  {opp.is_active ? 'Active' : 'Inactive'}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {opp.location || 'Remote'} 
+                                {opp.deadline && ` • Deadline: ${format(new Date(opp.deadline), 'MMM dd, yyyy')}`}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpportunityToggle(opp.id, opp.is_active)}
+                            >
+                              {opp.is_active ? 'Deactivate' : 'Activate'}
+                            </Button>
+                            <Button variant="ghost" size="icon">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteOpportunity(opp.id)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

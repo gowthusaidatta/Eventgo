@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserPlus } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
+import { validatePassword, getPasswordStrength } from '@/lib/passwordValidation';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -66,8 +67,9 @@ export function CreateUserDialog({ onSuccess }: CreateUserDialogProps) {
       return;
     }
 
-    if (formData.password.length < 6) {
-      toast({ title: 'Error', description: 'Password must be at least 6 characters', variant: 'destructive' });
+    const passwordValidation = validatePassword(formData.password);
+    if (!passwordValidation.isValid) {
+      toast({ title: 'Weak Password', description: passwordValidation.message, variant: 'destructive' });
       return;
     }
 
@@ -181,9 +183,17 @@ export function CreateUserDialog({ onSuccess }: CreateUserDialogProps) {
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required
-                minLength={6}
-                placeholder="Min 6 characters"
+                minLength={8}
+                placeholder="Min 8 chars, upper, lower, number"
               />
+              {formData.password && (
+                <p className={`text-xs mt-1 ${
+                  getPasswordStrength(formData.password) === 'strong' ? 'text-green-600' :
+                  getPasswordStrength(formData.password) === 'medium' ? 'text-yellow-600' : 'text-red-600'
+                }`}>
+                  Strength: {getPasswordStrength(formData.password)}
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="full_name">Full Name *</Label>

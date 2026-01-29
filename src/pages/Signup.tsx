@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { AppRole } from '@/lib/types';
 import evntgoLogo from '@/assets/evntgo-logo.jpeg';
 import { cn } from '@/lib/utils';
+import { validatePassword, getPasswordStrength } from '@/lib/passwordValidation';
 
 const roles: { id: AppRole; label: string; icon: any; description: string }[] = [
   { id: 'student', label: 'Student', icon: GraduationCap, description: 'Find events & opportunities' },
@@ -36,6 +37,18 @@ export default function Signup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate password strength
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      toast({
+        title: 'Weak Password',
+        description: passwordValidation.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     const additionalData: any = {};
@@ -164,11 +177,11 @@ export default function Signup() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
+                  placeholder="Min 8 chars, upper, lower, number"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={8}
                 />
                 <button
                   type="button"
@@ -178,6 +191,14 @@ export default function Signup() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {password && (
+                <p className={`text-xs ${
+                  getPasswordStrength(password) === 'strong' ? 'text-green-600' :
+                  getPasswordStrength(password) === 'medium' ? 'text-yellow-600' : 'text-red-600'
+                }`}>
+                  Password strength: {getPasswordStrength(password)}
+                </p>
+              )}
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">

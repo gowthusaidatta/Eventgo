@@ -50,6 +50,21 @@ export function OpportunityCard({ opportunity }: OpportunityCardProps) {
       className="overflow-hidden hover:shadow-lg transition-all duration-300 border-border/50 cursor-pointer"
       onClick={handleClick}
     >
+      {/* Image Banner */}
+      {opportunity.image_url && (
+        <div className="relative aspect-video overflow-hidden">
+          <img
+            src={opportunity.image_url}
+            alt={opportunity.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+          {opportunity.is_featured && (
+            <Badge className="absolute top-3 left-3 bg-gold text-foreground">
+              Featured
+            </Badge>
+          )}
+        </div>
+      )}
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="flex-1">
@@ -60,7 +75,7 @@ export function OpportunityCard({ opportunity }: OpportunityCardProps) {
               {opportunity.is_remote && (
                 <Badge variant="outline">Remote</Badge>
               )}
-              {opportunity.is_featured && (
+              {!opportunity.image_url && opportunity.is_featured && (
                 <Badge className="bg-gold text-foreground">Featured</Badge>
               )}
             </div>
@@ -71,7 +86,7 @@ export function OpportunityCard({ opportunity }: OpportunityCardProps) {
               {opportunity.company?.name || opportunity.external_source || 'Unknown Company'}
             </p>
           </div>
-          {opportunity.company?.logo_url && (
+          {!opportunity.image_url && opportunity.company?.logo_url && (
             <img
               src={opportunity.company.logo_url}
               alt={opportunity.company.name}

@@ -201,6 +201,7 @@ export type Database = {
           title: string
           updated_at: string
           venue: string | null
+          video_url: string | null
           view_count: number | null
         }
         Insert: {
@@ -224,6 +225,7 @@ export type Database = {
           title: string
           updated_at?: string
           venue?: string | null
+          video_url?: string | null
           view_count?: number | null
         }
         Update: {
@@ -247,6 +249,7 @@ export type Database = {
           title?: string
           updated_at?: string
           venue?: string | null
+          video_url?: string | null
           view_count?: number | null
         }
         Relationships: [
@@ -330,6 +333,7 @@ export type Database = {
           external_source: string | null
           external_url: string | null
           id: string
+          image_url: string | null
           is_active: boolean | null
           is_external: boolean | null
           is_featured: boolean | null
@@ -343,6 +347,7 @@ export type Database = {
           title: string
           type: Database["public"]["Enums"]["opportunity_type"]
           updated_at: string
+          video_url: string | null
           view_count: number | null
         }
         Insert: {
@@ -355,6 +360,7 @@ export type Database = {
           external_source?: string | null
           external_url?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           is_external?: boolean | null
           is_featured?: boolean | null
@@ -368,6 +374,7 @@ export type Database = {
           title: string
           type: Database["public"]["Enums"]["opportunity_type"]
           updated_at?: string
+          video_url?: string | null
           view_count?: number | null
         }
         Update: {
@@ -380,6 +387,7 @@ export type Database = {
           external_source?: string | null
           external_url?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           is_external?: boolean | null
           is_featured?: boolean | null
@@ -393,6 +401,7 @@ export type Database = {
           title?: string
           type?: Database["public"]["Enums"]["opportunity_type"]
           updated_at?: string
+          video_url?: string | null
           view_count?: number | null
         }
         Relationships: [

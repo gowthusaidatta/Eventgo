@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Pencil } from 'lucide-react';
+import { MediaUpload } from './MediaUpload';
 import type { Database } from '@/integrations/supabase/types';
 
 type OpportunityType = Database['public']['Enums']['opportunity_type'];
@@ -32,6 +33,8 @@ interface EditOpportunityDialogProps {
     is_external: boolean | null;
     external_url: string | null;
     external_source: string | null;
+    image_url?: string | null;
+    video_url?: string | null;
   };
   companies: { id: string; name: string }[];
   onSuccess: () => void;
@@ -65,6 +68,8 @@ export function EditOpportunityDialog({ opportunity, companies, onSuccess }: Edi
     is_external: opportunity.is_external ?? false,
     external_url: opportunity.external_url || '',
     external_source: opportunity.external_source || '',
+    image_url: opportunity.image_url || '',
+    video_url: opportunity.video_url || '',
   });
 
   useEffect(() => {
@@ -86,6 +91,8 @@ export function EditOpportunityDialog({ opportunity, companies, onSuccess }: Edi
         is_external: opportunity.is_external ?? false,
         external_url: opportunity.external_url || '',
         external_source: opportunity.external_source || '',
+        image_url: opportunity.image_url || '',
+        video_url: opportunity.video_url || '',
       });
     }
   }, [open, opportunity]);
@@ -111,6 +118,8 @@ export function EditOpportunityDialog({ opportunity, companies, onSuccess }: Edi
       is_external: formData.is_external,
       external_url: formData.external_url || null,
       external_source: formData.external_source || null,
+      image_url: formData.image_url || null,
+      video_url: formData.video_url || null,
     }).eq('id', opportunity.id);
 
     setLoading(false);
@@ -187,6 +196,25 @@ export function EditOpportunityDialog({ opportunity, companies, onSuccess }: Edi
                 rows={3}
               />
             </div>
+
+            {/* Media Upload Section */}
+            <div className="col-span-2 grid grid-cols-2 gap-4">
+              <MediaUpload
+                type="image"
+                currentUrl={formData.image_url}
+                onUpload={(url) => setFormData({ ...formData, image_url: url })}
+                onRemove={() => setFormData({ ...formData, image_url: '' })}
+                folder="opportunities"
+              />
+              <MediaUpload
+                type="video"
+                currentUrl={formData.video_url}
+                onUpload={(url) => setFormData({ ...formData, video_url: url })}
+                onRemove={() => setFormData({ ...formData, video_url: '' })}
+                folder="opportunities"
+              />
+            </div>
+
             <div className="col-span-2">
               <Label htmlFor="requirements">Requirements</Label>
               <Textarea

@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus } from 'lucide-react';
+import { MediaUpload } from './MediaUpload';
 import type { Database } from '@/integrations/supabase/types';
 
 type OpportunityType = Database['public']['Enums']['opportunity_type'];
@@ -47,6 +48,8 @@ export function CreateOpportunityDialog({
     is_external: false,
     external_url: '',
     external_source: '',
+    image_url: '',
+    video_url: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,6 +73,8 @@ export function CreateOpportunityDialog({
       is_external: formData.is_external,
       external_url: formData.external_url || null,
       external_source: formData.external_source || null,
+      image_url: formData.image_url || null,
+      video_url: formData.video_url || null,
     });
 
     setLoading(false);
@@ -95,6 +100,8 @@ export function CreateOpportunityDialog({
         is_external: false,
         external_url: '',
         external_source: '',
+        image_url: '',
+        video_url: '',
       });
       onSuccess();
     }
@@ -164,6 +171,25 @@ export function CreateOpportunityDialog({
                 rows={3}
               />
             </div>
+
+            {/* Media Upload Section */}
+            <div className="col-span-2 grid grid-cols-2 gap-4">
+              <MediaUpload
+                type="image"
+                currentUrl={formData.image_url}
+                onUpload={(url) => setFormData({ ...formData, image_url: url })}
+                onRemove={() => setFormData({ ...formData, image_url: '' })}
+                folder="opportunities"
+              />
+              <MediaUpload
+                type="video"
+                currentUrl={formData.video_url}
+                onUpload={(url) => setFormData({ ...formData, video_url: url })}
+                onRemove={() => setFormData({ ...formData, video_url: '' })}
+                folder="opportunities"
+              />
+            </div>
+
             <div className="col-span-2">
               <Label htmlFor="requirements">Requirements</Label>
               <Textarea

@@ -1,5 +1,6 @@
 node_modules
 npm-debug.log
+bun-debug.log
 dist
 .git
 .gitignore
@@ -12,12 +13,14 @@ README.md
 .idea
 .DS_Store
 coverage
-.nyc_output
 test
 vitest.config.ts
-tsconfig.node.json
 eslint.config.js
 vite.config.ts.bak
+Docker*
+docker-compose*
+supervisor.conf
+EC2-DEPLOYMENT.md
 docker-compose.override.yml
 .dockerignore
 .gitattributes

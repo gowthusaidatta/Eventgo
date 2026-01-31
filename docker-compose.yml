@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  eventgo-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: eventgo-production
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - NODE_ENV=production
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+    restart: always
+    volumes:
+      - ./dist:/var/www/html:ro
+      - nginx-cache:/var/cache/nginx
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - eventgo-network
+
+volumes:
+  nginx-cache:
+
+networks:
+  eventgo-network:
+    driver: bridge

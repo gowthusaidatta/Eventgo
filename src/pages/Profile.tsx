@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { AvatarUpload } from '@/components/AvatarUpload';
 
 export default function Profile() {
   const { user, profile, role, isLoading, refreshProfile } = useAuth();
@@ -20,6 +21,7 @@ export default function Profile() {
   const { toast } = useToast();
   
   const [isSaving, setIsSaving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '');
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
@@ -40,6 +42,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (profile) {
+      setAvatarUrl(profile.avatar_url || '');
       setFormData({
         full_name: profile.full_name || '',
         phone: profile.phone || '',
@@ -97,12 +100,12 @@ export default function Profile() {
         <div className="container mx-auto px-4 py-8 max-w-4xl">
           {/* Header */}
           <div className="flex items-center gap-6 mb-8">
-            <Avatar className="h-24 w-24">
-              <AvatarImage src={profile?.avatar_url || ''} />
-              <AvatarFallback className="text-2xl bg-secondary text-secondary-foreground">
-                {profile?.full_name?.charAt(0) || 'U'}
-              </AvatarFallback>
-            </Avatar>
+            <AvatarUpload
+              currentAvatarUrl={avatarUrl}
+              userName={profile?.full_name}
+              userId={user?.id || ''}
+              onUploadComplete={(url) => setAvatarUrl(url)}
+            />
             <div>
               <h1 className="text-3xl font-bold">{profile?.full_name}</h1>
               <p className="text-muted-foreground">{profile?.email}</p>

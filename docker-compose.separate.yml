@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # Main EventGo Platform
+  eventgo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: eventgo-main
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+    networks:
+      - eventgo-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Aditya University Subdomain
+  aditya:
+    build:
+      context: .
+      dockerfile: Dockerfile.aditya
+    container_name: aditya-university
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+    networks:
+      - eventgo-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    container_name: eventgo-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx-separate.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    networks:
+      - eventgo-network
+    depends_on:
+      - eventgo
+      - aditya
+    restart: unless-stopped
+
+networks:
+  eventgo-network:
+    driver: bridge

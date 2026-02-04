@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Calendar, Briefcase, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import evntgoLogo from '@/assets/evntgo-logo.jpeg';
+import evntgoLogo from '@/assets/evntgo.png';
 
 export function HeroSection() {
   const navigate = useNavigate();

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { AppRole } from '@/lib/types';
-import evntgoLogo from '@/assets/evntgo-logo.jpeg';
+import evntgoLogo from '@/assets/evntgo.png';
 import { cn } from '@/lib/utils';
 import { validatePassword, getPasswordStrength } from '@/lib/passwordValidation';
 

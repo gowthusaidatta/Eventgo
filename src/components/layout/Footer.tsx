@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import evntgoLogo from '@/assets/evntgo-logo.jpeg';
+import evntgoLogo from '@/assets/evntgo.png';
 
 export function Footer() {
   return (

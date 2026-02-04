@@ -1,4 +1,6 @@
 # syntax=docker/dockerfile:1
+# Multi-stage build for EventGo Frontend
+# Works on both Windows (with WSL2) and Linux
 
 ############################
 # Build stage
@@ -13,7 +15,7 @@ ENV NODE_ENV=production
 COPY package*.json ./
 COPY bun.lockb ./
 
-# Install ALL dependencies (including devDependencies for Vite build)
+# Install dependencies
 RUN bun install
 
 # Copy source code
@@ -23,35 +25,28 @@ COPY . .
 RUN bun run build
 
 ############################
-# Runtime stage
+# Runtime stage - Alpine for cross-platform compatibility
 ############################
-FROM ubuntu:22.04
+FROM node:18-alpine
 
-# Install nginx and curl for health checks
-RUN apt-get update && apt-get install -y \
-    nginx \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/sites-available/default
-
-# Create nginx sites-enabled symlink
-RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+# Install serve to serve static files
+RUN npm install -g serve
 
 # Copy built application from build stage
-COPY --from=build /app/dist /var/www/html
+COPY --from=build /app/dist /app/dist
 
-# Set proper permissions for nginx
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html
+# Set environment
+ENV NODE_ENV=production
+ENV PORT=80
 
 # Expose port 80
 EXPOSE 80
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost/index.html || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:80', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" || exit 1
 
-# Start nginx in foreground
-CMD ["nginx", "-g", "daemon off;"]
+# Start the static file server
+CMD ["serve", "-s", "/app/dist", "-l", "80"]

@@ -1,11 +1,16 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
 import { AppRole, Profile } from '@/lib/types';
+
+interface User {
+  id: string;
+  email?: string;
+  full_name?: string;
+  role?: AppRole;
+  [key: string]: any;
+}
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
   profile: Profile | null;
   role: AppRole | null;
   isLoading: boolean;
@@ -13,204 +18,170 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: any }>;
-  updatePassword: (password: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Determine API URL based on environment
+const getApiBaseUrl = () => {
+  // Use environment variable if available
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // For Docker containers, use relative path to backend service
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return 'http://localhost:3000';
+  }
+  
+  // For production or other environments
+  return 'http://eventgo-backend:3000';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const getToken = () => localStorage.getItem('auth_token');
+  const setToken = (token: string) => localStorage.setItem('auth_token', token);
+  const removeToken = () => localStorage.removeItem('auth_token');
+
+  const refreshProfile = async () => {
+    const token = getToken();
+    if (!token || !user) return;
+
     try {
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+      const response = await fetch(`${API_BASE_URL}/api/users/${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (profileError) throw profileError;
-      setProfile(profileData as Profile | null);
-
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (roleError) throw roleError;
-      setRole(roleData?.role as AppRole | null);
+      if (response.ok) {
+        const userData = await response.json();
+        setProfile(userData.profile || null);
+        setRole(userData.role || null);
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
   };
 
-  const refreshProfile = async () => {
-    if (user) {
-      await fetchProfile(user.id);
-    }
-  };
-
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Use setTimeout to avoid blocking the auth callback
-          setTimeout(() => fetchProfile(session.user.id), 0);
+    // Check if user is already authenticated on load
+    const checkAuth = async () => {
+      const token = getToken();
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/user`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.authenticated && data.user) {
+            setUser(data.user);
+            setRole(data.user.role || null);
+            await refreshProfile();
+          } else {
+            removeToken();
+          }
         } else {
-          setProfile(null);
-          setRole(null);
+          removeToken();
         }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        removeToken();
+      } finally {
         setIsLoading(false);
       }
-    );
+    };
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      }
-      setIsLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    checkAuth();
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, role: AppRole, additionalData?: any) => {
-    const redirectUrl = window.location.origin;
-    
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password,
           full_name: fullName,
           role,
-          ...additionalData
-        }
-      }
-    });
+          ...additionalData,
+        }),
+      });
 
-    if (error) return { error };
-
-    if (data.user) {
-      // Create profile with additional data
-      const profileData: any = {
-        user_id: data.user.id,
-        full_name: fullName,
-        email: email,
-      };
-      
-      // Add phone if provided
-      if (additionalData?.phone) {
-        profileData.phone = additionalData.phone;
-      }
-      
-      // Add student-specific fields
-      if (role === 'student') {
-        if (additionalData?.collegeName) {
-          profileData.college_name = additionalData.collegeName;
-        }
-        if (additionalData?.graduationYear) {
-          profileData.graduation_year = additionalData.graduationYear;
-        }
+      if (!response.ok) {
+        const error = await response.json();
+        return { error };
       }
 
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert(profileData);
+      const data = await response.json();
+      setToken(data.token);
+      setUser(data.user);
+      setRole(data.user.role || null);
 
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        return { error: profileError };
-      }
-
-      // Create role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: data.user.id,
-          role: role
-        });
-
-      if (roleError) {
-        console.error('Role creation error:', roleError);
-        return { error: roleError };
-      }
-
-      // Create college or company if needed
-      if (role === 'college' && additionalData?.collegeName) {
-        const { error: collegeError } = await supabase
-          .from('colleges')
-          .insert({
-            user_id: data.user.id,
-            name: additionalData.collegeName,
-            city: additionalData.city || null
-          });
-        if (collegeError) console.error('College creation error:', collegeError);
-      }
-
-      if (role === 'company' && additionalData?.companyName) {
-        const { error: companyError } = await supabase
-          .from('companies')
-          .insert({
-            user_id: data.user.id,
-            name: additionalData.companyName,
-            industry: additionalData.industry || null
-          });
-        if (companyError) console.error('Company creation error:', companyError);
-      }
+      return { error: null };
+    } catch (error) {
+      return { error };
     }
-
-    return { error: null };
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        return { error };
+      }
+
+      const data = await response.json();
+      setToken(data.token);
+      setUser(data.user);
+      setRole(data.user.role || null);
+
+      return { error: null };
+    } catch (error) {
+      return { error };
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await fetch(`${API_BASE_URL}/auth/logout`);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+
+    removeToken();
     setUser(null);
-    setSession(null);
     setProfile(null);
     setRole(null);
-  };
-
-  const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    return { error };
-  };
-
-  const updatePassword = async (password: string) => {
-    const { error } = await supabase.auth.updateUser({
-      password: password,
-    });
-    return { error };
   };
 
   return (
     <AuthContext.Provider value={{
       user,
-      session,
       profile,
       role,
       isLoading,
@@ -218,8 +189,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signOut,
       refreshProfile,
-      resetPassword,
-      updatePassword
     }}>
       {children}
     </AuthContext.Provider>
@@ -228,8 +197,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 }

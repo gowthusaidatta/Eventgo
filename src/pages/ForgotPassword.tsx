@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import evntgoLogo from '@/assets/evntgo-logo.jpeg';
+import evntgoLogo from '@/assets/evntgo.png';
 import { Button } from '@/components/ui/button';
 
 export default function ForgotPassword() {
